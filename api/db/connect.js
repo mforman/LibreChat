@@ -65,6 +65,16 @@ async function connectDb() {
     logger.info('Mongo Connection options');
     logger.info(JSON.stringify(opts, null, 2));
     mongoose.set('strictQuery', true);
+
+    // Enable query logging at info level
+    mongoose.set('debug', function (collectionName, method, query, doc, options) {
+      let logMessage = `Mongo querying ${collectionName}: method=${method}, query=${JSON.stringify(query)}`;
+      if (options && options.sort) {
+        logMessage += `, sort=${JSON.stringify(options.sort)}`;
+      }
+      logger.info(logMessage);
+    });
+
     cached.promise = mongoose.connect(MONGO_URI, opts).then((mongoose) => {
       return mongoose;
     });
