@@ -112,8 +112,7 @@ jest.mock('sharp', () =>
 jest.mock('@librechat/api', () => ({
   ...jest.requireActual('@librechat/api'),
   createEmailChangeService: (...args) => mockCreateEmailChangeService(...args),
-  needsRefresh: jest.fn(),
-  getNewS3URL: jest.fn(),
+  refreshFileUrl: jest.fn(),
   getWebSearchInstallEntries: (...args) => mockGetWebSearchInstallEntries(...args),
   revokeUserCodeEnvironmentWorkers: (...args) => mockRevokeUserCodeEnvironmentWorkers(...args),
   GenerationJobManager: {

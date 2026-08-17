@@ -4,7 +4,8 @@ const fs = require('fs').promises;
 const { nanoid } = require('nanoid');
 const { logger } = require('@librechat/data-schemas');
 const {
-  refreshS3Url,
+  refreshFileUrl,
+  isRefreshableSource,
   splitMCPToolKey,
   buildServerNameAliases,
   findShadowedServerNames,
@@ -68,7 +69,6 @@ const {
   actionDelimiter,
   AgentCapabilities,
   EModelEndpoint,
-  FileSources,
   removeCodeExecutionCaller,
   hasActivePiiFields,
   hasActivePiiPatterns,
@@ -938,11 +938,11 @@ const getAgentHandler = async (req, res, expandProperties = false) => {
       return res.status(404).json({ error: 'Agent not found' });
     }
 
-    if (agent.avatar && agent.avatar?.source === FileSources.s3) {
+    if (agent.avatar && isRefreshableSource(agent.avatar?.source)) {
       try {
         agent.avatar = {
           ...agent.avatar,
-          filepath: await refreshS3Url(agent.avatar),
+          filepath: await refreshFileUrl(agent.avatar),
         };
       } catch (e) {
         logger.warn('[/Agents/:id] Failed to refresh S3 URL', e);
@@ -1857,7 +1857,7 @@ const getListAgentsHandler = async (req, res) => {
       refreshKey,
       cacheTtl: Time.THIRTY_MINUTES,
       coverageLimit: req.config?.endpoints?.[EModelEndpoint.agents]?.avatarRefresh?.coverageLimit,
-      refreshS3Url,
+      refreshS3Url: refreshFileUrl,
       updateAgent: db.updateAgentAvatar,
     });
 

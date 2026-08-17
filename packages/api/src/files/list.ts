@@ -1,5 +1,6 @@
-import { CacheKeys, FileSources, Time } from 'librechat-data-provider';
+import { CacheKeys, Time } from 'librechat-data-provider';
 import type { TFile } from 'librechat-data-provider';
+import { isRefreshableSource } from '~/storage/constants';
 
 /** Default maximum number of files returned for an explicitly limited list request. */
 export const DEFAULT_FILE_LIST_LIMIT = 100;
@@ -67,7 +68,7 @@ export async function handleFileListRequest({
   const files = await dependencies.getFiles({ user: userId }, null, null, limit);
 
   let responseFiles = files;
-  if (fileStrategy === FileSources.s3) {
+  if (isRefreshableSource(fileStrategy)) {
     try {
       const cache = dependencies.getLogStores(CacheKeys.S3_EXPIRY_INTERVAL);
       const alreadyChecked = await cache.get(userId);

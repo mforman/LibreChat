@@ -1,7 +1,7 @@
 const { FileSources } = require('librechat-data-provider');
 const {
   getS3URL,
-  saveURLToS3WithMetadata,
+  getAzureURL,
   ImageService,
   parseDocument,
   uploadFileToS3,
@@ -11,13 +11,20 @@ const {
   deleteFileFromS3,
   getCloudFrontURL,
   uploadMistralOCR,
-  saveURLToCloudFrontWithMetadata,
+  uploadFileToAzure,
+  saveBufferToAzure,
+  getAzureFileStream,
+  deleteFileFromAzure,
+  getAzureDownloadURL,
   uploadAzureMistralOCR,
   uploadFileToCloudFront,
   saveBufferToCloudFront,
+  saveURLToS3WithMetadata,
   getCloudFrontFileStream,
   getCloudFrontDownloadURL,
   deleteFileFromCloudFront,
+  saveURLToAzureWithMetadata,
+  saveURLToCloudFrontWithMetadata,
   uploadGoogleVertexMistralOCR,
 } = require('@librechat/api');
 const {
@@ -60,17 +67,11 @@ const cloudFrontImageService = new ImageService(saveBufferToCloudFront, imageSer
 const uploadImageToCloudFront = (params) => cloudFrontImageService.uploadImage(params);
 const prepareCloudFrontImageURL = (_req, file) => cloudFrontImageService.prepareImageURL(file);
 const processCloudFrontAvatar = (params) => cloudFrontImageService.processAvatar(params);
-const {
-  saveBufferToAzure,
-  saveURLToAzure,
-  getAzureURL,
-  deleteFileFromAzure,
-  uploadFileToAzure,
-  getAzureFileStream,
-  uploadImageToAzure,
-  prepareAzureImageURL,
-  processAzureAvatar,
-} = require('./Azure');
+
+const azureImageService = new ImageService(saveBufferToAzure, imageServiceDeps);
+const uploadImageToAzure = (params) => azureImageService.uploadImage(params);
+const prepareAzureImageURL = (_req, file) => azureImageService.prepareImageURL(file);
+const processAzureAvatar = (params) => azureImageService.processAvatar(params);
 const { uploadOpenAIFile, deleteOpenAIFile, getOpenAIFileStream } = require('./OpenAI');
 const { deleteCodeEnvFile, getCodeOutputDownloadStream, uploadCodeEnvFile } = require('./Code');
 const { uploadVectors, deleteVectors } = require('./VectorDB');
@@ -147,7 +148,7 @@ const cloudfrontStrategy = () => ({
  * */
 const azureStrategy = () => ({
   handleFileUpload: uploadFileToAzure,
-  saveURL: saveURLToAzure,
+  saveURL: saveURLToAzureWithMetadata,
   getFileURL: getAzureURL,
   deleteFile: deleteFileFromAzure,
   saveBuffer: saveBufferToAzure,
@@ -155,6 +156,7 @@ const azureStrategy = () => ({
   processAvatar: processAzureAvatar,
   handleImageUpload: uploadImageToAzure,
   getDownloadStream: getAzureFileStream,
+  getDownloadURL: getAzureDownloadURL,
 });
 
 /**
