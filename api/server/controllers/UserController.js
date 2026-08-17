@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
 const { logger, getTenantId } = require('@librechat/data-schemas');
 const {
-  getNewS3URL,
-  needsRefresh,
   GenerationJobManager,
+  refreshFileUrl,
+  isRefreshableSource,
   MCPOAuthHandler,
   MCPTokenStorage,
   getAppConfigOptionsFromUser,
@@ -14,13 +14,7 @@ const {
   deleteAllSharedLinksWithCleanup,
   revokeUserCodeEnvironmentWorkers,
 } = require('@librechat/api');
-const {
-  Tools,
-  CacheKeys,
-  Constants,
-  FileSources,
-  ResourceType,
-} = require('librechat-data-provider');
+const { Tools, CacheKeys, Constants, ResourceType } = require('librechat-data-provider');
 const { updateUserPluginAuth, deleteUserPluginAuth } = require('~/server/services/PluginService');
 const { verifyOTPOrBackupCode } = require('~/server/services/twoFactorService');
 const { verifyEmail, resendVerificationEmail } = require('~/server/services/AuthService');
@@ -78,18 +72,20 @@ const getUserController = async (req, res) => {
   const appConfig = req.config ?? (await getAppConfig(getAppConfigOptionsFromUser(req.user)));
   /** @type {IUser} */
   const userData = sanitizeUserForResponse(req.user);
-  if (appConfig.fileStrategy === FileSources.s3 && userData.avatar) {
-    const avatarNeedsRefresh = needsRefresh(userData.avatar, 3600);
-    if (!avatarNeedsRefresh) {
-      return res.status(200).send(userData);
-    }
+  if (isRefreshableSource(appConfig.fileStrategy) && userData.avatar) {
     const originalAvatar = userData.avatar;
     try {
-      userData.avatar = await getNewS3URL(userData.avatar);
-      await db.updateUser(userData.id, { avatar: userData.avatar });
+      const refreshed = await refreshFileUrl(
+        { source: appConfig.fileStrategy, filepath: originalAvatar },
+        3600,
+      );
+      if (refreshed && refreshed !== originalAvatar) {
+        userData.avatar = refreshed;
+        await db.updateUser(userData.id, { avatar: userData.avatar });
+      }
     } catch (error) {
       userData.avatar = originalAvatar;
-      logger.error('Error getting new S3 URL for avatar:', error);
+      logger.error('Error refreshing avatar URL:', error);
     }
   }
   res.status(200).send(userData);

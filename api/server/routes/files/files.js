@@ -4,8 +4,9 @@ const { logger, SystemCapabilities } = require('@librechat/data-schemas');
 const {
   logAxiosError,
   getSafeErrorMetadata,
+  refreshFileUrls,
   getApprovalTtlMs,
-  refreshS3FileUrls,
+  isRefreshableSource,
   handleFilesUsageRequest,
   buildDeleteFilesResponse,
   shouldUseUploadSse,
@@ -65,16 +66,16 @@ router.get('/', async (req, res) => {
   try {
     const appConfig = req.config;
     const files = await db.getFiles({ user: req.user.id });
-    if (appConfig.fileStrategy === FileSources.s3) {
+    if (isRefreshableSource(appConfig.fileStrategy)) {
       try {
         const cache = getLogStores(CacheKeys.S3_EXPIRY_INTERVAL);
         const alreadyChecked = await cache.get(req.user.id);
         if (!alreadyChecked) {
-          await refreshS3FileUrls(files, db.batchUpdateFiles);
+          await refreshFileUrls(appConfig.fileStrategy, files, db.batchUpdateFiles);
           await cache.set(req.user.id, true, Time.THIRTY_MINUTES);
         }
       } catch (error) {
-        logger.warn('[/files] Error refreshing S3 file URLs:', error);
+        logger.warn('[/files] Error refreshing file URLs:', error);
       }
     }
     res.status(200).send(files);

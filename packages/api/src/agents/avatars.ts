@@ -1,6 +1,6 @@
 import { logger } from '@librechat/data-schemas';
-import { FileSources } from 'librechat-data-provider';
 import type { Agent, AgentAvatar } from 'librechat-data-provider';
+import { isRefreshableSource } from '~/storage/constants';
 
 const MAX_AVATAR_REFRESH_AGENTS = 1000;
 const AVATAR_REFRESH_BATCH_SIZE = 20;
@@ -71,7 +71,7 @@ export const refreshListAvatars = async ({
 
     await Promise.all(
       batch.map(async (agent) => {
-        if (agent?.avatar?.source !== FileSources.s3 || !agent?.avatar?.filepath) {
+        if (!isRefreshableSource(agent?.avatar?.source) || !agent?.avatar?.filepath) {
           stats.not_s3++;
           return;
         }

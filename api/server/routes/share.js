@@ -272,7 +272,10 @@ const streamSharedFile = async (req, res, file, requestedDisposition) => {
 
   // Redirect to a signed storage URL only when explicitly requested (?direct=true);
   // by default stream through the server so blob (XHR) callers work without bucket CORS.
-  const isDirectSource = source === FileSources.s3 || source === FileSources.cloudfront;
+  const isDirectSource =
+    source === FileSources.s3 ||
+    source === FileSources.cloudfront ||
+    source === FileSources.azure_blob;
   if (req.query.direct === 'true' && getDownloadURL && isDirectSource) {
     try {
       const url = await getDownloadURL({

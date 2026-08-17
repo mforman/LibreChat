@@ -4,7 +4,7 @@ const fs = require('fs').promises;
 const { nanoid } = require('nanoid');
 const { logger } = require('@librechat/data-schemas');
 const {
-  refreshS3Url,
+  refreshFileUrl,
   splitMCPToolKey,
   buildServerNameAliases,
   findShadowedServerNames,
@@ -12,12 +12,14 @@ const {
   agentUpdateSchema,
   agentSubagentsSchema,
   refreshListAvatars,
+  isRefreshableSource,
   collectEdgeAgentIds,
   replaceEdgeSourceId,
   mergeDeploymentSkillIds,
   mergeAgentOcrConversion,
   sanitizeModelParameters,
   MAX_AVATAR_REFRESH_AGENTS,
+  REFRESHABLE_FILE_SOURCES,
   collectToolResourceFileIds,
   convertOcrToContextInPlace,
   normalizeToolResourceFiles,
@@ -44,7 +46,6 @@ const {
   SkillsScope,
   CacheKeys,
   Constants,
-  FileSources,
   ResourceType,
   AccessRoleIds,
   PrincipalType,
@@ -950,14 +951,14 @@ const getAgentHandler = async (req, res, expandProperties = false) => {
       return res.status(404).json({ error: 'Agent not found' });
     }
 
-    if (agent.avatar && agent.avatar?.source === FileSources.s3) {
+    if (agent.avatar && isRefreshableSource(agent.avatar?.source)) {
       try {
         agent.avatar = {
           ...agent.avatar,
-          filepath: await refreshS3Url(agent.avatar),
+          filepath: await refreshFileUrl(agent.avatar),
         };
       } catch (e) {
-        logger.warn('[/Agents/:id] Failed to refresh S3 URL', e);
+        logger.warn('[/Agents/:id] Failed to refresh avatar URL', e);
       }
     }
 
@@ -1785,20 +1786,20 @@ const getListAgentsHandler = async (req, res) => {
      */
     const resolveAvatarRefresh = async () => {
       if (isValidCachedRefresh) {
-        logger.debug('[/Agents] S3 avatar refresh already checked, skipping');
+        logger.debug('[/Agents] Avatar refresh already checked, skipping');
         return cachedRefreshEntry;
       }
       try {
         const fullList = await db.getListAgentsByAccess({
           accessibleIds,
-          otherParams: { 'avatar.source': FileSources.s3 },
+          otherParams: { 'avatar.source': { $in: [...REFRESHABLE_FILE_SOURCES] } },
           limit: MAX_AVATAR_REFRESH_AGENTS,
           after: null,
         });
         const { urlCache } = await refreshListAvatars({
           agents: fullList?.data ?? [],
           userId,
-          refreshS3Url,
+          refreshS3Url: refreshFileUrl,
           updateAgent: db.updateAgent,
         });
         const refreshEntry = { urlCache };
@@ -1848,7 +1849,7 @@ const getListAgentsHandler = async (req, res) => {
         if (
           urlCache &&
           agent?.id &&
-          agent?.avatar?.source === FileSources.s3 &&
+          isRefreshableSource(agent?.avatar?.source) &&
           urlCache[agent.id]
         ) {
           agent.avatar = { ...agent.avatar, filepath: urlCache[agent.id] };
