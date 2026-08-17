@@ -46,7 +46,7 @@ jest.mock('sharp', () =>
 jest.mock('@librechat/api', () => ({
   ...jest.requireActual('@librechat/api'),
   mergeDeploymentSkillIds: jest.fn((ids) => ids),
-  refreshS3Url: jest.fn(),
+  refreshFileUrl: jest.fn(),
 }));
 
 jest.mock('~/server/services/Files/process', () => ({
@@ -108,7 +108,8 @@ const {
   createAgentManagementReadHandlers,
   createAgentManagementUpdateHandler,
   mergeDeploymentSkillIds,
-  refreshS3Url,
+  refreshFileUrl: refreshS3Url,
+  REFRESHABLE_FILE_SOURCES,
 } = require('@librechat/api');
 const { grantPermission } = require('~/server/services/PermissionService');
 const db = require('~/models');
@@ -4246,11 +4247,13 @@ describe('Agent Controllers - Mass Assignment Protection', () => {
       try {
         await getListAgentsHandler(mockReq, mockRes);
 
-        /** The refresh pass must query only S3-avatar agents — `refreshListAvatars`
-         *  skips non-S3 entries anyway, so without this assertion the filter could
+        /** The refresh pass must query only refreshable-avatar agents — `refreshListAvatars`
+         *  skips other entries anyway, so without this assertion the filter could
          *  regress to `{}` (reloading the whole accessible set) unnoticed. */
         expect(listSpy).toHaveBeenCalledWith(
-          expect.objectContaining({ otherParams: { 'avatar.source': FileSources.s3 } }),
+          expect.objectContaining({
+            otherParams: { 'avatar.source': { $in: [...REFRESHABLE_FILE_SOURCES] } },
+          }),
         );
         /** The user-facing list query keeps the request filter, not the refresh scope. */
         expect(listSpy).toHaveBeenCalledWith(

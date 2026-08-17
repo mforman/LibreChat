@@ -1,5 +1,7 @@
 export * from './cloudfront';
 export * from './s3';
+export * from './azure';
+export * from './refresh';
 export * from './types';
 export * from './images';
 export * from './avatar';
