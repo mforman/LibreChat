@@ -50,7 +50,7 @@ jest.mock('sharp', () =>
 
 jest.mock('@librechat/api', () => ({
   ...jest.requireActual('@librechat/api'),
-  refreshS3FileUrls: jest.fn(),
+  refreshFileUrls: jest.fn(),
 }));
 
 jest.mock('~/cache', () => ({

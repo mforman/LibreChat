@@ -1,6 +1,7 @@
 import { logger } from '@librechat/data-schemas';
-import { DEFAULT_AVATAR_REFRESH_COVERAGE_LIMIT, FileSources } from 'librechat-data-provider';
+import { DEFAULT_AVATAR_REFRESH_COVERAGE_LIMIT } from 'librechat-data-provider';
 import type { Agent, AgentAvatar } from 'librechat-data-provider';
+import { isRefreshableSource } from '~/storage/constants';
 
 const MAX_AVATAR_REFRESH_AGENTS: number = 1000;
 const AVATAR_REFRESH_BATCH_SIZE: number = 20;
@@ -20,7 +21,7 @@ export const selectAvatarRefreshAgents = (
   return (agents ?? [])
     .filter(
       (agent) =>
-        agent?.avatar?.source === FileSources.s3 &&
+        isRefreshableSource(agent?.avatar?.source) &&
         Boolean(agent?.avatar?.filepath) &&
         Boolean(agent?.id) &&
         !covered.has(agent.id),
@@ -88,7 +89,7 @@ const getCachedAvatarUrl = (entry: unknown, id: string): AvatarRefreshUrl | unde
  */
 export const applyCachedAvatarUrl = (agent: Agent, cacheEntry: unknown): Agent => {
   const avatar = agent?.avatar;
-  if (!agent?.id || avatar?.source !== FileSources.s3 || !avatar.filepath) {
+  if (!agent?.id || !isRefreshableSource(avatar?.source) || !avatar.filepath) {
     return agent;
   }
   const cached = getCachedAvatarUrl(cacheEntry, agent.id);
@@ -414,7 +415,7 @@ export const refreshListAvatars = async ({
 
     await Promise.all(
       batch.map(async (agent) => {
-        if (agent?.avatar?.source !== FileSources.s3 || !agent?.avatar?.filepath) {
+        if (!isRefreshableSource(agent?.avatar?.source) || !agent?.avatar?.filepath) {
           stats.not_s3++;
           return;
         }

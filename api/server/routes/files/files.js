@@ -6,7 +6,7 @@ const {
   getSafeErrorMetadata,
   getApprovalTtlMs,
   handleFileListRequest,
-  refreshS3FileUrls,
+  refreshFileUrls,
   handleFilesUsageRequest,
   buildDeleteFilesResponse,
   deleteAgentResourceFiles,
@@ -82,7 +82,8 @@ router.get('/', async (req, res) => {
       dependencies: {
         getFiles: db.getFiles,
         batchUpdateFiles: db.batchUpdateFiles,
-        refreshS3FileUrls,
+        refreshS3FileUrls: (files, batchUpdateFiles) =>
+          refreshFileUrls(req.config?.fileStrategy, files, batchUpdateFiles),
         getLogStores,
         logger,
       },

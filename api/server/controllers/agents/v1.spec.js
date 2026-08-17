@@ -55,7 +55,7 @@ jest.mock('sharp', () =>
 jest.mock('@librechat/api', () => ({
   ...jest.requireActual('@librechat/api'),
   mergeDeploymentSkillIds: jest.fn((ids) => ids),
-  refreshS3Url: jest.fn(),
+  refreshFileUrl: jest.fn(),
 }));
 
 jest.mock('~/server/services/Files/process', () => ({
@@ -118,7 +118,7 @@ const {
   createAgentManagementReadHandlers,
   createAgentManagementUpdateHandler,
   mergeDeploymentSkillIds,
-  refreshS3Url,
+  refreshFileUrl: refreshS3Url,
 } = require('@librechat/api');
 const { grantPermission } = require('~/server/services/PermissionService');
 const { hasCapability } = require('~/server/middleware/roles/capabilities');
