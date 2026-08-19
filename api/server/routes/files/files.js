@@ -65,13 +65,13 @@ const isAgentToolResourceKey = (toolResource) =>
 router.get('/', async (req, res) => {
   try {
     const appConfig = req.config;
-    const files = await db.getFiles({ user: req.user.id });
+    let files = await db.getFiles({ user: req.user.id });
     if (isRefreshableSource(appConfig.fileStrategy)) {
       try {
         const cache = getLogStores(CacheKeys.S3_EXPIRY_INTERVAL);
         const alreadyChecked = await cache.get(req.user.id);
         if (!alreadyChecked) {
-          await refreshFileUrls(appConfig.fileStrategy, files, db.batchUpdateFiles);
+          files = await refreshFileUrls(appConfig.fileStrategy, files, db.batchUpdateFiles);
           await cache.set(req.user.id, true, Time.THIRTY_MINUTES);
         }
       } catch (error) {

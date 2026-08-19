@@ -44,7 +44,7 @@ jest.mock('sharp', () =>
 
 jest.mock('@librechat/api', () => ({
   ...jest.requireActual('@librechat/api'),
-  refreshS3FileUrls: jest.fn(),
+  refreshFileUrls: jest.fn(),
   getCodeExecutionBaseUrl: jest.fn((profile, environment) => {
     if (environment?.baseURL) {
       return environment.baseURL;
@@ -1351,6 +1351,44 @@ describe('File Routes - Delete with Agent Access', () => {
 
       expect(response.status).toBe(400);
       expect(getStrategyFunctions).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('GET /files', () => {
+    it('sends the refreshed file URLs, not the stale ones', async () => {
+      const { refreshFileUrls } = require('@librechat/api');
+      const staleUrl = 'https://acct.blob.core.windows.net/files/images/u/img.png?sig=stale';
+      const freshUrl = 'https://acct.blob.core.windows.net/files/images/u/img.png?sig=fresh';
+
+      await createFile({
+        user: otherUserId,
+        file_id: uuidv4(),
+        filename: 'img.png',
+        filepath: staleUrl,
+        source: FileSources.azure_blob,
+        type: 'image/png',
+        bytes: 10,
+      });
+
+      refreshFileUrls.mockImplementation(async (_source, files) =>
+        files.map((file) => ({ ...file, filepath: freshUrl })),
+      );
+
+      const configuredApp = express();
+      configuredApp.use(express.json());
+      configuredApp.use((req, res, next) => {
+        req.user = { id: otherUserId.toString(), role: SystemRoles.USER };
+        req.config = { fileStrategy: FileSources.azure_blob };
+        req.app.locals = {};
+        next();
+      });
+      configuredApp.use('/files', router);
+
+      const response = await request(configuredApp).get('/files');
+      expect(response.status).toBe(200);
+      expect(refreshFileUrls).toHaveBeenCalledTimes(1);
+      const azureFile = response.body.find((file) => file.source === FileSources.azure_blob);
+      expect(azureFile.filepath).toBe(freshUrl);
     });
   });
 });
